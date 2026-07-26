@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "灵动标签 | LingTab",
+  "version": "1.0.0",
+  "description": "更简洁的浏览器标签页美化插件",
+  "default_locale": "zh_CN",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "bookmarks",
+    "favicon"
+  ],
+  "host_permissions": [
+    "*://api.bing.com/*",
+    "*://icon.horse/*",
+    "*://icons.duckduckgo.com/*",
+    "*://www.google.com/*"
+  ],
+  "background": {
+    "service_worker": "worker.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["alipay.png", "wechat.png", "MiSansVF.ttf"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

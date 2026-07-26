@@ -1,0 +1,10 @@
+{
+  "extensionName": {
+    "message": "LingTab",
+    "description": "扩展名称"
+  },
+  "extensionDescription": {
+    "message": "一个简洁的新标签页",
+    "description": "扩展描述"
+  }
+}

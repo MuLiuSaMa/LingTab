@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新建标签页</title>
+  <script src="theme-init.js"></script>
+  <style>
+    @font-face {
+      font-family: 'MiSans';
+      src: url('MiSansVF.ttf') format('truetype');
+      font-weight: 100 900;
+      font-display: swap;
+    }
+
+    :root { --accent: #4a90d9; }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #fff;
+      font-family: 'MiSans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bg-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    .bg-video {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+      pointer-events: none;
+    }
+
+    .bg-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: rgba(255,255,255,.15);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+
+    .bg-overlay.active {
+      opacity: 1;
+    }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 640px;
+      padding: 0 24px;
+      text-align: center;
+    }
+
+    .field {
+      position: relative;
+      width: 100%;
+      border-radius: 28px;
+      transition: transform .2s;
+    }
+
+    .field:hover,
+    .field:focus-within {
+      transform: scale(1.015);
+    }
+
+    .glow, .white, .border {
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      overflow: hidden;
+      pointer-events: none;
+      transition: opacity .3s;
+    }
+
+    .glow   { filter: blur(8px);  opacity: .35; }
+    .white  { filter: blur(1px);  opacity: .45; }
+    .border { filter: blur(.4px); opacity: .6; }
+
+    .glow::before, .white::before, .border::before {
+      content: "";
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 600px; height: 600px;
+      background-repeat: no-repeat;
+      transform: translate(-50%, -50%) rotate(0deg);
+      animation: spin 10s linear infinite;
+    }
+
+    .border::before {
+      background-image: conic-gradient(transparent, #a8c8f0 8%, transparent 20%, transparent 50%, #e8b8d8 60%, transparent 72%);
+    }
+
+    .white::before {
+      background-image: conic-gradient(transparent, #c8def8 8%, transparent 22%, transparent 50%, #f0d0e8 60%, transparent 74%);
+      animation-delay: -.2s;
+    }
+
+    .glow::before {
+      width: 820px; height: 820px;
+      background-image: conic-gradient(transparent, #b8d4f8 8%, transparent 30%, transparent 50%, #e8c0e0 62%, transparent 85%);
+      animation-delay: -.4s;
+    }
+
+    @keyframes spin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .search-form {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+      height: 56px;
+      border-radius: 28px;
+      background: rgba(255,255,255,.08);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255,255,255,.4);
+      z-index: 1;
+      transition: box-shadow .2s;
+    }
+
+    .search-form::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -1;
+      pointer-events: none;
+      border: 1px solid rgba(255,255,255,.35);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), inset 0 0 24px rgba(255,255,255,.06);
+      filter: url(#liquid-glass-filter);
+      opacity: .35;
+    }
+
+    .search-form::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: 2;
+      pointer-events: none;
+      padding: 1.5px;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.16) 33%, rgba(255,255,255,.4) 66%, rgba(255,255,255,0) 100%);
+    }
+
+    .field:hover .glow,
+    .field:focus-within .glow   { opacity: .85; }
+    .field:hover .white,
+    .field:focus-within .white { opacity: 1; }
+    .field:hover .border,
+    .field:focus-within .border { opacity: 1; }
+
+    .search-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: none;
+      font-size: 16px;
+      padding: 0 18px;
+      height: 100%;
+      color: #333;
+    }
+
+    .search-input:-webkit-autofill,
+    .search-input:-webkit-autofill:hover,
+    .search-input:-webkit-autofill:focus,
+    .search-input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+      -webkit-text-fill-color: #333 !important;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+
+    .search-input::placeholder {
+      color: #999;
+    }
+
+    .search-submit {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      margin-right: 6px;
+      border: 1px solid rgba(255,255,255,.5);
+      border-radius: 50%;
+      background: rgba(255,255,255,.25);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s;
+    }
+
+    .search-submit:hover {
+      background: rgba(255,255,255,.45);
+    }
+
+    .search-submit svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #e74c3c;
+      opacity: 0;
+      transition: opacity .25s;
+    }
+
+    .hint.show {
+      opacity: 1;
+    }
+
+    .suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 6px;
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255,255,255,.5);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      list-style: none;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-8px) scale(0.98);
+      pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+      z-index: 1000;
+    }
+
+    .suggestions::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      z-index: -1;
+      pointer-events: none;
+      border: 1px solid rgba(255,255,255,.35);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), inset 0 0 24px rgba(255,255,255,.06);
+      filter: url(#liquid-glass-filter);
+      opacity: .35;
+    }
+
+    .suggestions.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .suggestions li {
+      padding: 12px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background .15s;
+      animation: suggestItemIn .3s ease backwards;
+      color: #333;
+    }
+
+    .suggestions li:nth-child(1) { animation-delay: .02s; }
+    .suggestions li:nth-child(2) { animation-delay: .04s; }
+    .suggestions li:nth-child(3) { animation-delay: .06s; }
+    .suggestions li:nth-child(4) { animation-delay: .08s; }
+    .suggestions li:nth-child(5) { animation-delay: .10s; }
+
+    @keyframes suggestItemIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .suggestions li:hover,
+    .suggestions li.active {
+      background: color-mix(in srgb, var(--accent) 15%, white);
+    }
+
+    .suggestions li svg {
+      width: 16px;
+      height: 16px;
+      color: #999;
+      flex-shrink: 0;
+    }
+
+    .settings-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: #888;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s, transform .2s;
+    }
+
+    .settings-btn:hover {
+      background: rgba(0,0,0,.05);
+      transform: rotate(30deg);
+    }
+
+    .settings-btn svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    body.dim-bg {
+      background: transparent;
+      transition: background .3s;
+    }
+
+    body.dim-bg .container,
+    body.dim-bg .hint,
+    body.dim-bg .settings-btn,
+    body.dim-bg .bg-layer,
+    body.dim-bg .bg-video,
+    body.dim-bg .bg-overlay {
+      filter: none;
+    }
+
+    .settings-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 360px;
+      height: 100vh;
+      z-index: 201;
+      padding: 28px 24px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: rgba(255,255,255,.15);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-radius: 28px 0 0 28px;
+      border-left: 1px solid rgba(255,255,255,.3);
+      transform: translateX(100%);
+      transition: transform .35s cubic-bezier(.4,0,.2,1);
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .settings-panel::-webkit-scrollbar {
+      display: none;
+    }
+
+    .settings-panel.open {
+      transform: translateX(0);
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .settings-header h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #222;
+    }
+
+    .settings-close {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      transition: background .2s;
+    }
+
+    .settings-close:hover {
+      background: rgba(0,0,0,.1);
+    }
+
+    .settings-close svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .settings-section {
+      margin-bottom: 24px;
+    }
+
+    .settings-section h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    #bgUploadInput {
+      display: none;
+    }
+
+    .bg-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .bg-tile {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .2s;
+      background: #eee;
+    }
+
+    .bg-tile:hover {
+      border-color: var(--accent);
+    }
+
+    .bg-tile.active {
+      border-color: var(--accent);
+    }
+
+    .bg-tile img,
+    .bg-tile video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .bg-tile-add {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed #ccc;
+      background: transparent;
+      color: #999;
+      transition: all .2s;
+    }
+
+    .bg-tile-add:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,255,255,.3);
+    }
+
+    .bg-tile-add svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .bg-tile-del {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 20px;
+      height: 20px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(0,0,0,.5);
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .bg-tile:hover .bg-tile-del {
+      display: flex;
+    }
+
+    .bg-tile-play {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(0,0,0,.5);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .bg-tile-play svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    .cp-trigger {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color .2s;
+      user-select: none;
+    }
+
+    .cp-trigger:hover {
+      border-color: var(--accent);
+    }
+
+    .cp-preview-sm {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,.08);
+    }
+
+    .cp-hex {
+      flex: 1;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .cp-arrow {
+      width: 16px;
+      height: 16px;
+      color: #999;
+    }
+
+    .cp-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0,0,0,.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cp-popup {
+      width: 300px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.15);
+    }
+
+    .cp-popup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .cp-popup-header span {
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .cp-popup-close {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(0,0,0,.04);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      transition: background .2s;
+    }
+
+    .cp-popup-close:hover {
+      background: rgba(0,0,0,.1);
+    }
+
+    .cp-popup-close svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .cp-panel {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      cursor: crosshair;
+      background: linear-gradient(to top, #000, transparent),
+                  linear-gradient(to right, #fff, hsl(var(--cp-hue, 212), 100%, 50%));
+    }
+
+    .cp-cursor {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 4px rgba(0,0,0,.4);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .cp-hue {
+      position: relative;
+      width: 100%;
+      height: 16px;
+      margin-top: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      background: linear-gradient(to right,
+        #f00 0%, #ff0 16.66%, #0f0 33.33%, #0ff 50%, #00f 66.66%, #f0f 83.33%, #f00 100%);
+    }
+
+    .cp-hue-cursor {
+      position: absolute;
+      top: 50%;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 4px rgba(0,0,0,.3);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .cp-footer {
+      margin-top: 12px;
+    }
+
+    .cp-preview {
+      width: 100%;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,.08);
+    }
+
+    .social-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #444;
+      text-decoration: none;
+      transition: all .2s;
+    }
+
+    .social-link:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,255,255,.3);
+    }
+
+    .sponsor-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #444;
+      text-decoration: none;
+      cursor: pointer;
+      background: none;
+      transition: all .2s;
+    }
+
+    .sponsor-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,255,255,.3);
+    }
+
+    .sponsor-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      background: rgba(0,0,0,.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+
+    .sponsor-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sponsor-popup {
+      position: relative;
+      max-width: 360px;
+      width: 90%;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,.3);
+      transform: scale(.9);
+      transition: transform .25s;
+    }
+
+    .sponsor-overlay.active .sponsor-popup {
+      transform: scale(1);
+    }
+
+    .sponsor-popup img {
+      width: 100%;
+      display: block;
+    }
+
+    .sponsor-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(0,0,0,.4);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s;
+    }
+
+    .sponsor-close:hover {
+      background: rgba(0,0,0,.7);
+    }
+
+    .sponsor-close svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ---------- Dock ---------- */
+    #bm-dock {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 99; max-width: 94vw;
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.5);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255,255,255,.5);
+      box-shadow: 0 2px 16px rgba(0,0,0,.07);
+      overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: none;
+      animation: dockUp .6s cubic-bezier(.2,.8,.2,1);
+    }
+    #bm-dock::-webkit-scrollbar { display: none; }
+    @keyframes dockUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(24px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    .bm-item {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 56px; height: 56px; border-radius: 12px; cursor: pointer;
+      flex-shrink: 0;
+      background: rgba(255,255,255,.35);
+      border: 1px solid rgba(255,255,255,.4);
+      transition: background .2s, opacity .2s;
+      position: relative;
+      padding: 4px;
+      gap: 2px;
+    }
+    .bm-item:hover {
+      background: rgba(255,255,255,.7);
+    }
+    .bm-item:active { opacity: .7; }
+
+    .bm-icon {
+      width: 20px; height: 20px;
+      flex-shrink: 0; object-fit: contain;
+    }
+    .bm-icon.placeholder {
+      background: rgba(0,120,212,.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #0078d4; font-weight: 700;
+      border-radius: 3px;
+    }
+    .bm-icon-local {
+      width: 20px; height: 20px;
+      color: rgba(0,120,212,.8);
+    }
+
+    .bm-label {
+      font-size: 10px;
+      color: #333;
+      max-width: 52px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    /* Clock context menu */
+    #clock-context-menu {
+      padding: 12px;
+      min-width: 160px;
+    }
+
+    .clock-menu-header {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .clock-menu-btn {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: none;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .clock-menu-btn:hover {
+      background: rgba(0,0,0,.06);
+    }
+
+    #clockSizeSlider {
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: #ddd;
+      outline: none;
+    }
+
+    #clockSizeSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    body.no-dock #bm-dock { display: none; }
+
+    .bm-del {
+      position: absolute; top: -6px; right: -6px; z-index: 2;
+      width: 18px; height: 18px; border-radius: 50%; border: none; cursor: pointer;
+      background: rgba(0,0,0,.6); color: #fff; font-size: 12px; line-height: 1;
+      display: none; align-items: center; justify-content: center;
+    }
+    .bm-del:hover { background: #e81123; }
+
+    .bm-add {
+      display: flex; align-items: center; justify-content: center;
+      width: 48px; height: 48px; border-radius: 12px; cursor: pointer;
+      flex-shrink: 0; border: 2px dashed rgba(0,120,212,.4); color: #0078d4;
+      font-size: 24px; transition: background .15s, border-color .2s;
+    }
+    .bm-add:hover { background: rgba(0,120,212,.08); border-color: #0078d4; }
+
+    .bm-context-menu {
+      position: fixed;
+      z-index: 200;
+      display: none;
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.5);
+      box-shadow: 0 8px 32px rgba(0,0,0,.15);
+      overflow: hidden;
+      animation: menuIn .15s ease;
+    }
+    .bm-context-menu.show { display: block; }
+
+    @keyframes menuIn {
+      from { opacity: 0; transform: scale(.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .bm-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      width: 100%;
+      border: none;
+      background: none;
+      font-size: 14px;
+      font-family: inherit;
+      color: #333;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .bm-menu-item:hover {
+      background: rgba(0,0,0,.06);
+    }
+    .bm-menu-item svg { flex-shrink: 0; }
+    .bm-menu-item span { white-space: nowrap; }
+
+    #bm-form-wrap {
+      position: fixed; bottom: 98px; left: 50%; transform: translateX(-50%);
+      z-index: 100; display: none;
+    }
+    #bm-form-wrap.open { display: block; }
+    #bm-form {
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(44px) saturate(180%);
+      -webkit-backdrop-filter: blur(44px) saturate(180%);
+      border-radius: 28px; padding: 20px;
+      width: 300px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.5), 0 8px 32px rgba(0,0,0,.08);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    #bm-form input[type="text"] {
+      border: 1px solid rgba(0,0,0,.08); border-radius: 16px; outline: none;
+      padding: 12px 16px; font-size: 15px; font-family: inherit;
+      background: rgba(255,255,255,.7); color: #333;
+      transition: border-color .2s;
+    }
+    #bm-form input[type="text"]:focus {
+      background: #fff; border-color: #007AFF;
+    }
+    #bm-form .bm-form-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    #bm-form .bm-btn {
+      border: none; cursor: pointer; padding: 10px 22px; border-radius: 20px;
+      font-size: 14px; font-family: inherit; font-weight: 600;
+    }
+    #bm-form .bm-btn-cancel { background: rgba(0,0,0,.05); color: #636366; }
+    #bm-form .bm-btn-cancel:hover { background: rgba(0,0,0,.1); }
+    #bm-form .bm-btn-save { background: #007AFF; color: #fff; }
+    #bm-form .bm-btn-save:hover { background: #106ebe; }
+    #bm-form .bm-btn-save:disabled { opacity: .35; cursor: default; }
+
+    /* Settings toggle switch */
+    .switch-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0;
+    }
+    .switch-row .label { font-size: 14px; color: #555; }
+    .switch {
+      position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .track {
+      position: absolute; cursor: pointer; inset: 0;
+      background: #ccc; border-radius: 12px; transition: background .3s;
+    }
+    .switch .thumb {
+      position: absolute;
+      height: 20px; width: 20px; left: 2px; bottom: 2px;
+      background: #fff; border-radius: 50%; transition: transform .3s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .switch input:checked + .track { background: var(--accent); }
+    .switch input:checked + .track .thumb { transform: translateX(20px); }
+
+    /* ---------- Clock ---------- */
+    .clock {
+      margin-bottom: 32px;
+      animation: clockFadeIn .6s ease;
+      cursor: grab;
+      user-select: none;
+      display: inline-block;
+    }
+    body.no-clock .clock { display: none; }
+
+    .clock-time {
+      font-size: var(--clock-time-size, 64px);
+      font-weight: 200;
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+    .clock-sec {
+      font-size: var(--clock-sec-size, 24px);
+      font-weight: 300;
+      opacity: .65;
+      letter-spacing: 1px;
+    }
+    .clock-sec.hidden { display: none; }
+
+    .clock-date {
+      font-size: var(--clock-date-size, 15px);
+      font-weight: 400;
+      opacity: .6;
+    }
+
+    .clock-date.hidden { display: none; }
+
+    .clock-analog {
+      width: var(--clock-analog-size, 160px);
+      height: var(--clock-analog-size, 160px);
+      margin: 0 auto;
+    }
+
+    @keyframes clockFadeIn {
+      from { opacity: 0; margin-top: -16px; }
+      to   { opacity: 1; margin-top: 0; }
+    }
+
+    .clock-digital {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .clock-time-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .clock-analog {
+      width: var(--clock-analog-size, 160px);
+      height: var(--clock-analog-size, 160px);
+      margin: 0 auto;
+    }
+
+    .clock-face {
+      width: 100%;
+      height: 100%;
+    }
+
+    .clock-marks line {
+      stroke: currentColor;
+      stroke-width: 2;
+      opacity: .35;
+    }
+
+    .clock-hand {
+      stroke: currentColor;
+      stroke-width: 3;
+      stroke-linecap: round;
+      transform-origin: 100px 100px;
+      transition: none;
+    }
+
+    .clock-hour { stroke-width: 4; opacity: .9; }
+    .clock-minute { stroke-width: 3; opacity: .75; }
+    .clock-second { 
+      stroke-width: 1.5; 
+      opacity: .5;
+    }
+    body.no-clock-seconds .clock-second { display: none; }
+
+    .clock-style-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .clock-style-btn {
+      padding: 10px 0;
+      border: 1px solid rgba(0,0,0,.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,.3);
+      font-size: 13px;
+      font-family: inherit;
+      color: #666;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .clock-style-btn:hover {
+      border-color: var(--accent);
+      background: rgba(255,255,255,.5);
+    }
+
+    .clock-style-btn.active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;visibility:hidden;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="glass-edge-mask" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="black" stop-opacity="0" />
+        <stop offset="55%"  stop-color="black" stop-opacity="0" />
+        <stop offset="100%" stop-color="white" stop-opacity="1" />
+      </radialGradient>
+      <filter id="liquid-glass-filter" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.04 0.06" numOctaves="4" seed="2" result="NOISE" />
+        <feGaussianBlur in="NOISE" stdDeviation="1.5" result="NOISE_BLUR" />
+        <feDisplacementMap in="SourceGraphic" in2="NOISE_BLUR" scale="18" xChannelSelector="R" yChannelSelector="G" result="RED_DISPLACED" />
+        <feColorMatrix in="RED_DISPLACED" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="RED_CHANNEL" />
+        <feDisplacementMap in="SourceGraphic" in2="NOISE_BLUR" scale="14" xChannelSelector="G" yChannelSelector="B" result="GREEN_DISPLACED" />
+        <feColorMatrix in="GREEN_DISPLACED" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="GREEN_CHANNEL" />
+        <feDisplacementMap in="SourceGraphic" in2="NOISE_BLUR" scale="10" xChannelSelector="B" yChannelSelector="R" result="BLUE_DISPLACED" />
+        <feColorMatrix in="BLUE_DISPLACED" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="BLUE_CHANNEL" />
+        <feBlend in="GREEN_CHANNEL" in2="BLUE_CHANNEL" mode="screen" result="GB_COMBINED" />
+        <feBlend in="RED_CHANNEL" in2="GB_COMBINED" mode="screen" result="RGB_COMBINED" />
+        <feGaussianBlur in="RGB_COMBINED" stdDeviation="0.4" result="ABERRATED" />
+        <feComposite in="ABERRATED" in2="glass-edge-mask" operator="in" result="EDGE_ONLY" />
+        <feMerge>
+          <feMergeNode in="SourceGraphic" />
+          <feMergeNode in="EDGE_ONLY" />
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="bg-layer" id="bgLayer"></div>
+  <video class="bg-video" id="bgVideo" autoplay loop muted playsinline></video>
+  <div class="bg-overlay" id="bgOverlay"></div>
+
+  <button class="settings-btn" id="settingsBtn" aria-label="设置">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+      <h2>设置</h2>
+      <button class="settings-close" id="settingsClose" aria-label="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="settings-section">
+      <h3>主题色</h3>
+      <div class="cp-trigger" id="cpTrigger">
+        <div class="cp-preview-sm" id="cpPreviewSm"></div>
+        <span class="cp-hex" id="cpHex">#4a90d9</span>
+        <svg class="cp-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>自定义背景</h3>
+      <div class="bg-grid" id="bgGrid"></div>
+      <input type="file" id="bgUploadInput" accept="image/*,video/*">
+    </div>
+
+    <div class="settings-section">
+      <h3>时钟</h3>
+      <div class="switch-row">
+        <span class="label">显示时钟</span>
+        <label class="switch">
+          <input type="checkbox" id="clockToggle" checked>
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </div>
+      <div class="switch-row">
+        <span class="label">显示秒数</span>
+        <label class="switch">
+          <input type="checkbox" id="clockSecondsToggle">
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </div>
+      <div style="margin-top:12px;">
+        <span class="label" style="font-size:14px;color:#555;display:block;margin-bottom:8px;">时钟颜色</span>
+        <div class="cp-trigger" id="clockCpTrigger">
+          <div class="cp-preview-sm" id="clockCpPreviewSm"></div>
+          <span class="cp-hex" id="clockCpHex">自动</span>
+          <svg class="cp-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <span class="label" style="font-size:14px;color:#555;display:block;margin-bottom:8px;">时钟样式</span>
+        <div class="clock-style-grid" style="grid-template-columns: 1fr 1fr;">
+          <button class="clock-style-btn active" data-style="digital">数字</button>
+          <button class="clock-style-btn" data-style="analog">钟表</button>
+          <button class="clock-style-btn" data-style="off" style="grid-column: span 2;">关闭</button>
+        </div>
+      </div>
+      <div class="switch-row" style="margin-top:12px;">
+        <span class="label">显示日期</span>
+        <label class="switch">
+          <input type="checkbox" id="clockDateToggle" checked>
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Dock 栏</h3>
+      <div class="switch-row">
+        <span class="label">显示 Dock</span>
+        <label class="switch">
+          <input type="checkbox" id="dockToggle" checked>
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>关于</h3>
+      <p style="font-size:14px;color:#555;margin-bottom:12px;">作者：木流 (MuLiu_SaMa)</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+        <a href="https://space.bilibili.com/1614951812" target="_blank" rel="noopener" class="social-link">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.124.929.373.249.249.373.551.373.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/>
+          </svg>
+          <span>Bilibili</span>
+        </a>
+        <a href="https://www.douyin.com/user/MS4wLjABAAAAytD1zP6zVeXgPQuG-PWHq4AhsZz9zNXPcJap2JVaoG88Ani9tmBj0FtH7DLrQWsH" target="_blank" rel="noopener" class="social-link">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+          </svg>
+          <span>抖音</span>
+        </a>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="sponsor-btn" id="sponsorAlipay">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="#1677FF">
+            <path d="M21.422 15.358c-1.254-.556-2.59-1.06-3.993-1.505a14.12 14.12 0 0 0 1.337-4.027h-3.56v-1.39h4.287V7.14h-4.287V4.5h-1.93v2.64H7.272v1.296h3.984v1.39H7.62v1.296h7.157c-.175.855-.45 1.672-.812 2.446-2.27-.514-4.588-.883-6.947-1.104-.458 1.168-.812 2.384-1.058 3.637 2.465.573 5.1 1.013 7.89 1.322.746 1.255 1.62 2.413 2.61 3.458h1.97a11.438 11.438 0 0 0 3.093-3.391z"/>
+          </svg>
+          <span>支付宝赞助</span>
+        </button>
+        <button class="sponsor-btn" id="sponsorWechat">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="#07C160">
+            <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-7.062-6.122zM14.82 13.13c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982z"/>
+          </svg>
+          <span>微信赞助</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cp-overlay" id="cpOverlay" style="display:none;">
+    <div class="cp-popup">
+      <div class="cp-popup-header">
+        <span>选择主题色</span>
+        <button class="cp-popup-close" id="cpPopupClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="cp-panel" id="cpPanel">
+        <div class="cp-cursor" id="cpCursor"></div>
+      </div>
+      <div class="cp-hue" id="cpHue">
+        <div class="cp-hue-cursor" id="cpHueCursor"></div>
+      </div>
+      <div class="cp-footer">
+        <div class="cp-preview" id="cpPreview"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cp-overlay" id="clockCpOverlay" style="display:none;">
+    <div class="cp-popup">
+      <div class="cp-popup-header">
+        <span>选择时钟颜色</span>
+        <button class="cp-popup-close" id="clockCpPopupClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="cp-panel" id="clockCpPanel">
+        <div class="cp-cursor" id="clockCpCursor"></div>
+      </div>
+      <div class="cp-hue" id="clockCpHue">
+        <div class="cp-hue-cursor" id="clockCpHueCursor"></div>
+      </div>
+      <div class="cp-footer">
+        <div class="cp-preview" id="clockCpPreview"></div>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button id="clockColorAutoBtn" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;background:none;cursor:pointer;font-size:13px;">自动</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="clock" id="clock">
+      <div class="clock-digital" id="clockDigital">
+        <div class="clock-time-wrap">
+          <span class="clock-time" id="clockTime">00:00</span>
+          <span class="clock-sec" id="clockSec">00</span>
+        </div>
+        <span class="clock-date" id="clockDate">1月1日 星期一</span>
+      </div>
+      <div class="clock-analog" id="clockAnalog" style="display:none;">
+        <svg viewBox="0 0 200 200" class="clock-face">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+          <circle cx="100" cy="100" r="88" fill="none" stroke="currentColor" stroke-width="1" opacity="0.15"/>
+          <g class="clock-marks" id="clockMarks"></g>
+          <line class="clock-hand clock-hour" id="clockHour" x1="100" y1="100" x2="100" y2="55"/>
+          <line class="clock-hand clock-minute" id="clockMinute" x1="100" y1="100" x2="100" y2="35"/>
+          <line class="clock-hand clock-second" id="clockSecond" x1="100" y1="100" x2="100" y2="25"/>
+          <circle cx="100" cy="100" r="4" fill="currentColor"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="glow"></div>
+      <div class="white"></div>
+      <div class="border"></div>
+      <form class="search-form" id="searchForm" autocomplete="off">
+        <input class="search-input" type="text" name="q" id="searchInput" placeholder="使用 Bing 搜索..." autofocus autocomplete="off">
+
+        <button class="search-submit" type="submit" aria-label="搜索">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12,5 19,12 12,19"/>
+          </svg>
+        </button>
+
+        <ul class="suggestions" id="suggestList"></ul>
+      </form>
+    </div>
+
+    <p class="hint" id="hint">请输入搜索内容</p>
+  </div>
+
+  <div class="sponsor-overlay" id="sponsorOverlay">
+    <div class="sponsor-popup">
+      <button class="sponsor-close" id="sponsorClose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <img id="sponsorImg" src="" alt="赞助二维码">
+    </div>
+  </div>
+
+  <div id="clock-context-menu" class="bm-context-menu">
+    <div class="clock-menu-header">时钟大小</div>
+    <input type="range" id="clockSizeSlider" min="50" max="200" value="100" style="width:100%;margin:8px 0;">
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="clock-menu-btn" id="clockResetPos">重置位置</button>
+    </div>
+  </div>
+
+  <div id="bm-dock"></div>
+
+  <div id="bm-context-menu" class="bm-context-menu">
+    <button class="bm-menu-item" id="bmMenuDelete">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      <span>删除</span>
+    </button>
+  </div>
+
+  <div id="bm-form-wrap">
+    <form id="bm-form" autocomplete="off" novalidate>
+      <input type="text" id="bm-name" placeholder="名称" maxlength="30">
+      <input type="text" id="bm-url" placeholder="网址 https://...">
+      <div class="bm-form-btns">
+        <button type="button" class="bm-btn bm-btn-cancel" id="bmCancel">取消</button>
+        <button type="submit" class="bm-btn bm-btn-save" id="bmSave" disabled>保存</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>
