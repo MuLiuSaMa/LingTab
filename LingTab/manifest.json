@@ -20,7 +20,11 @@
     "*://api.bing.com/*",
     "*://icon.horse/*",
     "*://icons.duckduckgo.com/*",
-    "*://www.google.com/*"
+    "*://www.google.com/*",
+    "*://gitee.com/*",
+    "*://api.open-meteo.com/*",
+    "*://ip-api.com/*",
+    "http://ip-api.com/*"
   ],
   "background": {
     "service_worker": "worker.js"

@@ -83,7 +83,7 @@
       li.addEventListener('click', function () {
         input.value = item;
         list.classList.remove('active');
-        form.submit();
+        window.location.href = 'https://www.bing.com/search?q=' + encodeURIComponent(item);
       });
 
       list.appendChild(li);
@@ -118,7 +118,7 @@
         e.preventDefault();
         input.value = suggestData[selectedIndex];
         list.classList.remove('active');
-        form.submit();
+        window.location.href = 'https://www.bing.com/search?q=' + encodeURIComponent(suggestData[selectedIndex]);
       }
     } else if (e.key === 'Escape') {
       list.classList.remove('active');
@@ -693,13 +693,14 @@
   function setClockScale(scale) {
     clockScale = scale;
     localStorage.setItem('lingtab_clock_scale', scale);
-    // 使用 CSS 变量缩放，不影响布局
-    var root = document.documentElement;
-    root.style.setProperty('--clock-time-size', (64 * scale) + 'px');
-    root.style.setProperty('--clock-sec-size', (24 * scale) + 'px');
-    root.style.setProperty('--clock-date-size', (15 * scale) + 'px');
-    root.style.setProperty('--clock-analog-size', (160 * scale) + 'px');
+    clockEl.style.transform = 'scale(' + scale + ')';
+    // 时钟固定时重新定位，使缩放以中心为基准
+    if (clockPosX && clockPosY) {
+      setClockPosition(clockPosX, clockPosY);
+    }
   }
+
+  var clockSpacer = null;
 
   function setClockPosition(x, y) {
     clockPosX = x;
@@ -707,12 +708,35 @@
     localStorage.setItem('lingtab_clock_pos_x', x);
     localStorage.setItem('lingtab_clock_pos_y', y);
     if (x !== '' && y !== '') {
+      // 时钟脱离 flex 流之前插入占位符，防止容器位移
+      if (!clockSpacer) {
+        clockSpacer = document.createElement('div');
+        clockSpacer.className = 'clock-spacer';
+        clockSpacer.style.visibility = 'hidden';
+        clockSpacer.style.pointerEvents = 'none';
+      }
+      if (!clockSpacer.parentNode) {
+        clockEl.parentNode.insertBefore(clockSpacer, clockEl);
+      }
+      clockSpacer.style.width = clockEl.offsetWidth + 'px';
+      clockSpacer.style.height = clockEl.offsetHeight + 'px';
+      clockSpacer.style.marginBottom = '32px';
+      clockSpacer.style.flexShrink = '0';
+      clockSpacer.style.display = 'inline-block';
+
       clockEl.style.position = 'fixed';
-      // 减去时钟自身宽度和高度的一半，使其以时钟中心为定位点
+      var centerX, centerY;
+      if (x.indexOf('%') !== -1) {
+        centerX = (parseFloat(x) / 100) * window.innerWidth;
+        centerY = (parseFloat(y) / 100) * window.innerHeight;
+      } else {
+        centerX = parseFloat(x);
+        centerY = parseFloat(y);
+      }
       var clockWidth = clockEl.offsetWidth || 200;
       var clockHeight = clockEl.offsetHeight || 80;
-      var leftVal = parseFloat(x) - clockWidth / 2;
-      var topVal = parseFloat(y) - clockHeight / 2;
+      var leftVal = centerX - clockWidth / 2;
+      var topVal = centerY - clockHeight / 2;
       clockEl.style.left = leftVal + 'px';
       clockEl.style.top = topVal + 'px';
       clockEl.style.marginBottom = '0';
@@ -721,6 +745,9 @@
       clockEl.style.left = '';
       clockEl.style.top = '';
       clockEl.style.marginBottom = '';
+      if (clockSpacer && clockSpacer.parentNode) {
+        clockSpacer.parentNode.removeChild(clockSpacer);
+      }
     }
   }
 
@@ -880,9 +907,19 @@
 
   // 检查保存的位置是否有效
   if (clockPosX && clockPosY) {
-    var px = parseInt(clockPosX);
-    var py = parseInt(clockPosY);
-    // 如果位置在屏幕内（允许部分超出），应用位置；否则清除
+    var px, py;
+    if (clockPosX.indexOf('%') !== -1) {
+      px = (parseFloat(clockPosX) / 100) * window.innerWidth;
+      py = (parseFloat(clockPosY) / 100) * window.innerHeight;
+    } else {
+      px = parseInt(clockPosX);
+      py = parseInt(clockPosY);
+      // 迁移旧版像素值为百分比
+      clockPosX = (px / window.innerWidth * 100).toFixed(2) + '%';
+      clockPosY = (py / window.innerHeight * 100).toFixed(2) + '%';
+      localStorage.setItem('lingtab_clock_pos_x', clockPosX);
+      localStorage.setItem('lingtab_clock_pos_y', clockPosY);
+    }
     var maxW = window.innerWidth + 200;
     var maxH = window.innerHeight + 200;
     if (px >= -200 && px <= maxW && py >= -50 && py <= maxH) {
@@ -951,6 +988,12 @@
       // 鼠标位置相对于时钟中心的偏移
       clockDragOffsetX = (e.clientX - rect.left) - clockWidth / 2;
       clockDragOffsetY = (e.clientY - rect.top) - clockHeight / 2;
+      // 立即固定时钟位置并插入占位符，防止容器布局变化导致搜索框跳动
+      var centerX = e.clientX - clockDragOffsetX;
+      var centerY = e.clientY - clockDragOffsetY;
+      var pctX = (centerX / window.innerWidth * 100).toFixed(2) + '%';
+      var pctY = (centerY / window.innerHeight * 100).toFixed(2) + '%';
+      setClockPosition(pctX, pctY);
       clockEl.style.cursor = 'grabbing';
       e.preventDefault();
     }
@@ -958,10 +1001,11 @@
 
   document.addEventListener('mousemove', function (e) {
     if (clockDragging) {
-      // 保存的是鼠标点击位置对应的"中心点"坐标
       var centerX = e.clientX - clockDragOffsetX;
       var centerY = e.clientY - clockDragOffsetY;
-      setClockPosition(centerX + 'px', centerY + 'px');
+      var pctX = (centerX / window.innerWidth * 100).toFixed(2) + '%';
+      var pctY = (centerY / window.innerHeight * 100).toFixed(2) + '%';
+      setClockPosition(pctX, pctY);
     }
   });
 
@@ -971,6 +1015,61 @@
       clockEl.style.cursor = 'grab';
     }
   });
+
+  // 窗口缩放时按百分比重新计算时钟位置
+  window.addEventListener('resize', function () {
+    if (clockPosX && clockPosY && clockPosX.indexOf('%') !== -1) {
+      setClockPosition(clockPosX, clockPosY);
+    }
+  });
+
+  // ---------- 版本检查更新 ----------
+  var APP_VERSION = '1.0.0';
+  var _latestVersion = '';
+  var updateNotif = document.getElementById('update-notification');
+  var updateNotifDesc = document.getElementById('updateNotifDesc');
+  var updateNotifClose = document.getElementById('updateNotifClose');
+
+  document.getElementById('appVersion').textContent = APP_VERSION;
+
+  updateNotifClose.addEventListener('click', function () {
+    updateNotif.style.display = 'none';
+    if (_latestVersion) {
+      localStorage.setItem('lingtab_update_dismissed', _latestVersion);
+    }
+  });
+
+  function gtVersion(a, b) {
+    var pa = a.split('.').map(Number);
+    var pb = b.split('.').map(Number);
+    for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
+      if ((pa[i] || 0) > (pb[i] || 0)) return true;
+      if ((pa[i] || 0) < (pb[i] || 0)) return false;
+    }
+    return false;
+  }
+
+  function checkUpdate() {
+    var dismissed = localStorage.getItem('lingtab_update_dismissed');
+
+    fetch('https://gitee.com/api/v5/repos/muliuawa/lingtab/releases?page=1&per_page=10', { cache: 'no-cache' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data || !data.length) return;
+        // Gitee 返回按创建时间升序，取最后一个为最新
+        var latest = data[data.length - 1];
+        var tag = (latest.tag_name || '').trim();
+        var latestVer = tag.replace(/^v/i, '').replace(/,/g, '.');
+        if (latestVer && gtVersion(latestVer, APP_VERSION) && latestVer !== dismissed) {
+          _latestVersion = latestVer;
+          updateNotifDesc.textContent = 'v' + latestVer + ' 已发布，点击前往官网下载最新版';
+          updateNotif.style.display = 'block';
+        }
+      })
+      .catch(function () {});
+  }
+
+  checkUpdate();
 
   updateClock();
   setInterval(updateClock, 50);
@@ -1299,5 +1398,137 @@
   if (dockItems.length === 0) {
     loadDockItems();
   }
+
+  // ---------- Weather ----------
+  var weatherEl = document.getElementById('weather');
+  var weatherToggle = document.getElementById('weatherToggle');
+  var weatherEnabled = localStorage.getItem('lingtab_weather_enabled') === 'true';
+
+  var weatherCodes = {
+    0: { desc: '晴', icon: '☀️' },
+    1: { desc: '晴', icon: '🌤️' },
+    2: { desc: '多云', icon: '⛅' },
+    3: { desc: '阴', icon: '☁️' },
+    45: { desc: '雾', icon: '🌫️' },
+    48: { desc: '雾凇', icon: '🌫️' },
+    51: { desc: '小毛毛雨', icon: '🌦️' },
+    53: { desc: '毛毛雨', icon: '🌦️' },
+    55: { desc: '大毛毛雨', icon: '🌦️' },
+    56: { desc: '冻毛毛雨', icon: '🌧️' },
+    57: { desc: '大冻毛毛雨', icon: '🌧️' },
+    61: { desc: '小雨', icon: '🌧️' },
+    63: { desc: '中雨', icon: '🌧️' },
+    65: { desc: '大雨', icon: '🌧️' },
+    66: { desc: '冻雨', icon: '🌧️' },
+    67: { desc: '大冻雨', icon: '🌧️' },
+    71: { desc: '小雪', icon: '❄️' },
+    73: { desc: '中雪', icon: '❄️' },
+    75: { desc: '大雪', icon: '❄️' },
+    77: { desc: '雪粒', icon: '❄️' },
+    80: { desc: '小阵雨', icon: '🌦️' },
+    81: { desc: '阵雨', icon: '🌦️' },
+    82: { desc: '大阵雨', icon: '🌧️' },
+    85: { desc: '小阵雪', icon: '🌨️' },
+    86: { desc: '大阵雪', icon: '🌨️' },
+    95: { desc: '雷暴', icon: '⛈️' },
+    96: { desc: '雷暴+小冰雹', icon: '⛈️' },
+    99: { desc: '雷暴+大冰雹', icon: '⛈️' }
+  };
+
+  function getWeatherInfo(code) {
+    return weatherCodes[code] || { desc: '未知', icon: '❓' };
+  }
+
+  function setWeatherVisible(visible) {
+    weatherEnabled = visible;
+    localStorage.setItem('lingtab_weather_enabled', visible);
+    document.body.classList.toggle('no-weather', !visible);
+    if (visible) {
+      loadWeather();
+    }
+  }
+
+  function renderWeather(data) {
+    if (!data || !data.current) {
+      weatherEl.style.display = 'none';
+      return;
+    }
+
+    var current = data.current;
+    var temp = Math.round(current.temperature_2m);
+    var weatherInfo = getWeatherInfo(current.weather_code);
+    var isDay = current.is_day === 1;
+
+    var html = '<span class="weather-icon">' + weatherInfo.icon + '</span>';
+    html += '<span class="weather-temp">' + temp + '°C</span>';
+    html += '<span class="weather-desc">' + weatherInfo.desc + '</span>';
+
+    if (data.city) {
+      html += '<span class="weather-city">' + data.city + '</span>';
+    }
+
+    weatherEl.innerHTML = html;
+    weatherEl.style.display = 'flex';
+  }
+
+  function loadWeather() {
+    if (!weatherEnabled) return;
+
+    var cached = localStorage.getItem('lingtab_weather_data');
+    var cacheTime = localStorage.getItem('lingtab_weather_time');
+    var now = Date.now();
+
+    if (cached && cacheTime && (now - parseInt(cacheTime)) < 30 * 60 * 1000) {
+      try {
+        renderWeather(JSON.parse(cached));
+        return;
+      } catch (e) {}
+    }
+
+    function fetchWeatherByCoords(lat, lng, city) {
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lng + '&current=temperature_2m,weather_code,wind_speed_10m,is_day&timezone=auto')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.current) {
+            data.city = city;
+            localStorage.setItem('lingtab_weather_data', JSON.stringify(data));
+            localStorage.setItem('lingtab_weather_time', now.toString());
+            renderWeather(data);
+          }
+        })
+        .catch(function () {});
+    }
+
+    function fetchGeo() {
+      fetch('http://ip-api.com/json/?lang=zh-CN')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.status === 'success' && data.lat !== undefined) {
+            fetchWeatherByCoords(data.lat, data.lon, data.city);
+          }
+        })
+        .catch(function () {});
+    }
+
+    try {
+      chrome.runtime.sendMessage({ type: 'geolocation' }, function (geoResponse) {
+        if (geoResponse && geoResponse.data && geoResponse.data.latitude) {
+          fetchWeatherByCoords(geoResponse.data.latitude, geoResponse.data.longitude, geoResponse.data.city);
+        } else {
+          fetchGeo();
+        }
+      });
+    } catch (e) {
+      fetchGeo();
+    }
+  }
+
+  weatherToggle.checked = weatherEnabled;
+
+  weatherToggle.addEventListener('change', function () {
+    setWeatherVisible(this.checked);
+  });
+
+  setWeatherVisible(weatherEnabled);
 
 })();

@@ -26,6 +26,7 @@
       font-family: 'MiSans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       color: #333;
@@ -789,6 +790,57 @@
       height: 16px;
     }
 
+    /* ---------- Weather ---------- */
+    .weather {
+      position: fixed;
+      bottom: 96px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 98;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.5);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255,255,255,.5);
+      box-shadow: 0 2px 16px rgba(0,0,0,.07);
+      font-size: 14px;
+      color: #333;
+      animation: dockUp .6s cubic-bezier(.2,.8,.2,1);
+      cursor: default;
+      user-select: none;
+    }
+
+    .weather-icon {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+    }
+
+    .weather-temp {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .weather-desc {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .weather-city {
+      font-size: 12px;
+      color: #999;
+      padding-left: 8px;
+      border-left: 1px solid rgba(0,0,0,.1);
+    }
+
+    body.no-weather .weather {
+      display: none !important;
+    }
+
     /* ---------- Dock ---------- */
     #bm-dock {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -899,6 +951,7 @@
     }
 
     body.no-dock #bm-dock { display: none; }
+    body:not(.no-weather) .weather { bottom: 96px; }
 
     .bm-del {
       position: absolute; top: -6px; right: -6px; z-index: 2;
@@ -1020,6 +1073,7 @@
       cursor: grab;
       user-select: none;
       display: inline-block;
+      transform-origin: center center;
     }
     body.no-clock .clock { display: none; }
 
@@ -1130,6 +1184,93 @@
       background: var(--accent);
       color: #fff;
     }
+
+    /* ---------- Update Notification ---------- */
+    .update-notification {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      max-width: 400px;
+      animation: notifSlideIn .4s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    @keyframes notifSlideIn {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .update-notif-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255,255,255,.5);
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
+    }
+
+    .update-notif-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .update-notif-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .update-notif-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .update-notif-desc {
+      font-size: 12px;
+      color: #777;
+      margin-top: 2px;
+    }
+
+    .update-notif-btn {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      text-decoration: none;
+      transition: opacity .2s;
+    }
+
+    .update-notif-btn:hover {
+      opacity: .85;
+    }
+
+    .update-notif-close {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: none;
+      font-size: 18px;
+      color: #999;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background .2s;
+    }
+
+    .update-notif-close:hover {
+      background: rgba(0,0,0,.06);
+      color: #333;
+    }
+
   </style>
 </head>
 <body>
@@ -1255,8 +1396,21 @@
     </div>
 
     <div class="settings-section">
+      <h3>天气</h3>
+      <div class="switch-row">
+        <span class="label">显示天气</span>
+        <label class="switch">
+          <input type="checkbox" id="weatherToggle">
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </div>
+      <p style="font-size:12px;color:#999;margin-top:8px;">基于 IP 定位获取当前位置天气</p>
+    </div>
+
+    <div class="settings-section">
       <h3>关于</h3>
       <p style="font-size:14px;color:#555;margin-bottom:12px;">作者：木流 (MuLiu_SaMa)</p>
+      <p style="font-size:13px;color:#999;margin-bottom:12px;">当前版本：v<span id="appVersion">1.0.0</span></p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
         <a href="https://space.bilibili.com/1614951812" target="_blank" rel="noopener" class="social-link">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
@@ -1337,8 +1491,7 @@
     </div>
   </div>
 
-  <div class="container">
-    <div class="clock" id="clock">
+  <div class="clock" id="clock">
       <div class="clock-digital" id="clockDigital">
         <div class="clock-time-wrap">
           <span class="clock-time" id="clockTime">00:00</span>
@@ -1359,7 +1512,8 @@
       </div>
     </div>
 
-    <div class="field">
+    <div class="container">
+      <div class="field">
       <div class="glow"></div>
       <div class="white"></div>
       <div class="border"></div>
@@ -1375,10 +1529,10 @@
 
         <ul class="suggestions" id="suggestList"></ul>
       </form>
-    </div>
+      </div>
 
-    <p class="hint" id="hint">请输入搜索内容</p>
-  </div>
+      <p class="hint" id="hint">请输入搜索内容</p>
+    </div>
 
   <div class="sponsor-overlay" id="sponsorOverlay">
     <div class="sponsor-popup">
@@ -1399,6 +1553,8 @@
       <button class="clock-menu-btn" id="clockResetPos">重置位置</button>
     </div>
   </div>
+
+  <div id="weather" class="weather"></div>
 
   <div id="bm-dock"></div>
 
@@ -1421,6 +1577,18 @@
         <button type="submit" class="bm-btn bm-btn-save" id="bmSave" disabled>保存</button>
       </div>
     </form>
+  </div>
+
+  <div id="update-notification" class="update-notification" style="display:none;">
+    <div class="update-notif-content">
+      <div class="update-notif-icon">🎉</div>
+      <div class="update-notif-text">
+        <div class="update-notif-title">发现新版本</div>
+        <div class="update-notif-desc" id="updateNotifDesc"></div>
+      </div>
+      <a class="update-notif-btn" href="https://lingtab.nexbox.top" target="_blank" rel="noopener">前往下载</a>
+      <button class="update-notif-close" id="updateNotifClose">&times;</button>
+    </div>
   </div>
 
   <script src="newtab.js"></script>
